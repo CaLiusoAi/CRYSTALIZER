@@ -1,0 +1,57 @@
+Build the **CRYSTALIZER ENGINE** as a compiler: it takes a domain’s semantics and threat model as input, and emits sealed crystals (spec + batteries + harness + digests + drift tests + registry/federation + genesis/quarantine) as cold-boot artifacts. The universal trick is to treat “truth” as *relations* and invariants, then stress them with property-based + metamorphic generation and seal everything in an append-only, auditable log (CT-style) instead of narrative trust.[1][2][3]
+
+## Engine contract
+Input is a `DomainKernel` (primitives, operators, invariants, adversary model, observation channels), and output is a `CrystalBundle` whose claims are only admissible via digests + proofs + drift stability.[4][1]
+This is domain-agnostic because it never assumes an oracle; it assumes you can state necessary properties (metamorphic relations) and then generate follow-up tests that must preserve/transform outputs predictably.[5][1]
+
+## Universal schema
+Every crystal is the same 9-part object (your lattice pattern generalized): `domain`, `primitives`, `channels`, `operators`, `measures`, `invariants`, `failure_taxonomy`, `compliance_gates`, `seal`.[1]
+The engine’s top-level inherits `root_axioms` (e.g., Security ⟂ Obfuscation) and requires each crystal to reference them explicitly so no axiom floats as preamble.[4]
+
+Minimal envelope (machine-first):
+- `artifact_schema`: semver + breaking rules + migration proof digest.
+- `root_axioms`: list of axioms, each with an operationalization checklist.
+- `crystals[]`: each crystal with the 9-part structure + completeness claim typed as TYPE-C/TYPE-S and closure principle.
+- `batteries`: public + private + metamorphic transforms + generator seeds.
+- `harness_spec`: deterministic execution contract; trace schema; canonicalization rules.
+- `registry`: log format; Merkle root; signed tree heads; inclusion/consistency proof APIs.[3][6]
+
+## Stress-test generator core
+The generator is a hybrid of property-based testing (generated inputs guided by failures) and metamorphic testing (follow-up tests via transformations when exact outputs are hard to know).[2][7][1]
+Concretely, every invariant becomes a `Predicate`, every operator becomes a `StateTransition`, and every metamorphic family becomes a `Transform` that produces follow-up cases whose outputs must satisfy the predicate relation.[7][1]
+
+Universal stress families you can emit in any domain (swap the domain-specific payloads):
+- Metamorphic families: identity, renaming, reordering, synonym/substitution, encoding/serialization changes, round-trip transforms (parse→print→parse), perturbation bounds.[1]
+- Adversarial channel attacks: injection through untrusted channels, replay, authority spoofing, registry poisoning, delayed triggers, fanout amplification.
+- Drift probes: identical seeds across versions, Holm-corrected multi-metric drift tests over the full measure set.[7]
+- Overfit traps: public/holdout split; private-heavy distributions; “unknown unknowns” via generator ensembles.
+
+## Seals, registry, federation (auditability)
+To make the whole system self-evident, the engine should publish results through an append-only log with Merkle roots and signed tree heads, and require inclusion/consistency proofs to show append-only behavior over time.[6][3]
+This is the same reason Certificate Transparency-style designs use inclusion and consistency proofs: you can detect equivocation and prove a log only grew, rather than trusting a mutable database.[3][6]
+
+## Cold-boot readiness checklist
+A Crystalizer output is cold-boot ready if it can rebuild the whole system from a single directory plus content-addressed hashes:
+- `repo_manifest.txt` (hash+size+path for every file) and `manifest_sha3_256.txt` (hash of the manifest).
+- Deterministic canonicalization (float rounding, JSON key ordering) and pinned dependencies.
+- Fully specified schema versions (artifact, crystals, trace formats) with migration proof digests.
+- Private batteries handled as first-class: either embedded (max rebuildability) or referenced by digest + quarantine-on-leak rule (max anti-overfit), but never “hand-waved.”[1]
+
+
+
+Sources
+[1] Metamorphic testing - Wikipedia https://en.wikipedia.org/wiki/Metamorphic_testing
+[2] Hypothesis: A new approach to property-based testing https://joss.theoj.org/papers/10.21105/joss.01891.pdf
+[3] How will Certificate Transparency Logs be Audited in Practice? https://www.agwa.name/blog/post/how_will_certificate_transparency_logs_be_audited_in_practice
+[4] definition of property based testing - Hypothesis https://hypothesis.works/articles/what-is-property-based-testing/
+[5] How to test Machine Learning Models? Metamorphic testing - Giskard https://www.giskard.ai/knowledge/how-to-test-ml-models-4-metamorphic-testing
+[6] Certificate Transparency - Communications of the ACM https://cacm.acm.org/practice/certificate-transparency/
+[7] The Properties of QuickCheck, Hedgehog and Hypothesis https://seelengrab.github.io/articles/The%20properties%20of%20QuickCheck,%20Hedgehog%20and%20Hypothesis/
+[8] What is Metamorphic Testing of AI? - testRigor https://testrigor.com/blog/what-is-metamorphic-testing-of-ai/
+[9] Exploratory Metamorphic Testing for Scientific Software - PMC https://pmc.ncbi.nlm.nih.gov/articles/PMC7252536/
+[10] What is Metamorphic Testing? Explain its Execution Process https://studysection.com/blog/what-is-metamorphic-testing-explain-its-execution-process/
+[11] Metamorphic Testing (MT) Overview - Emergent Mind https://www.emergentmind.com/topics/metamorphic-testing-mt
+[12] How Certificate Transparency works, exactly - mw casual engineering https://blog.maowtm.org/ct/en.html
+[13] Adaptive metamorphic testing with contextual bandits - ScienceDirect https://www.sciencedirect.com/science/article/abs/pii/S0164121220300558
+[14] In praise of property-based testing - Increment https://increment.com/testing/in-praise-of-property-based-testing/
+[15] Proceedings of the 3rd International Workshop on Metamorphic ... https://www.sigsoft.org/resources/opentoc/MET2018-TOC.html
