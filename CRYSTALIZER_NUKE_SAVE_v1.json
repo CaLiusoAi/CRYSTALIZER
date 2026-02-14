@@ -1,0 +1,86 @@
+{
+  "artifact_schema": {
+    "breaking_change_rules": {
+      "major": "meaning changes or removals",
+      "minor": "additive only",
+      "patch": "clarifications"
+    },
+    "name": "CRYSTALIZER_NUKE_SAVE",
+    "schema_semver": "1.0.0",
+    "version": {
+      "major": 1,
+      "minor": 0,
+      "patch": 0
+    }
+  },
+  "bundle_files": [
+    {
+      "bytes_len": 57,
+      "content": "One or more engine specs were not present at build time.\n",
+      "encoding": "utf-8",
+      "path": "specs/ERROR_MISSING_SPECS.txt",
+      "sha3_256": "12c0053617e64c0ff51a9d13650e17f0d8f9836be6073b6ac02418c763d0ffe8"
+    },
+    {
+      "bytes_len": 1006,
+      "content": "#!/usr/bin/env python3\nimport json, hashlib\nfrom pathlib import Path\n\ndef sha3_hex(b: bytes) -> str:\n    return hashlib.sha3_256(b).hexdigest()\n\ndef main():\n    import argparse\n    ap = argparse.ArgumentParser()\n    ap.add_argument('--artifact', required=True)\n    ap.add_argument('--outdir', required=True)\n    args = ap.parse_args()\n\n    a = json.loads(Path(args.artifact).read_text(encoding='utf-8'))\n    outdir = Path(args.outdir)\n    outdir.mkdir(parents=True, exist_ok=True)\n\n    for f in a['bundle_files']:\n        rel = f['path']\n        if f['encoding'] != 'utf-8':\n            raise SystemExit('Only utf-8 supported in this minimal unpacker')\n        data = f['content'].encode('utf-8')\n        h = sha3_hex(data)\n        if h != f['sha3_256']:\n            raise SystemExit(f\"Digest mismatch for {rel}: {h} != {f['sha3_256']}\")\n        p = outdir / rel\n        p.parent.mkdir(parents=True, exist_ok=True)\n        p.write_bytes(data)\n\n    print('UNPACK_OK')\n\nif __name__ == '__main__':\n    main()\n",
+      "encoding": "utf-8",
+      "path": "tools/unpack_nuke_save.py",
+      "sha3_256": "63a62524520cbbc9253c4c5c1f46153d1a72f4e438bc3f700003b6f07abcd5c6"
+    },
+    {
+      "bytes_len": 1071,
+      "content": "#!/usr/bin/env python3\nimport json, hashlib\nfrom pathlib import Path\n\ndef sha3_hex(b: bytes) -> str:\n    return hashlib.sha3_256(b).hexdigest()\n\ndef main():\n    import argparse\n    ap = argparse.ArgumentParser()\n    ap.add_argument('--artifact', required=True)\n    ap.add_argument('--outdir', required=True)\n    args = ap.parse_args()\n\n    art_bytes = Path(args.artifact).read_bytes()\n    a = json.loads(art_bytes.decode('utf-8'))\n\n    expected = a.get('self_hash', {}).get('sha3_256')\n    if expected:\n        actual = sha3_hex(art_bytes)\n        if actual != expected:\n            raise SystemExit(f\"Artifact sha3 mismatch: {actual} != {expected}\")\n\n    outdir = Path(args.outdir)\n    for f in a['bundle_files']:\n        p = outdir / f['path']\n        if not p.exists():\n            raise SystemExit(f\"Missing file: {f['path']}\")\n        data = p.read_bytes()\n        h = sha3_hex(data)\n        if h != f['sha3_256']:\n            raise SystemExit(f\"File sha3 mismatch: {f['path']} {h} != {f['sha3_256']}\")\n\n    print('VERIFY_OK')\n\nif __name__ == '__main__':\n    main()\n",
+      "encoding": "utf-8",
+      "path": "tools/verify_nuke_save.py",
+      "sha3_256": "c332a645d4bdf35adeaf280e2bb5f1396d0d2a744aa82ebeae4125e4fb05cdea"
+    },
+    {
+      "bytes_len": 341,
+      "content": "# CRYSTALIZER_NUKE_SAVE_v1\n\nReconstruct everything from **one JSON**.\n\n## Unpack\n\n```bash\npython tools/unpack_nuke_save.py --artifact CRYSTALIZER_NUKE_SAVE_v1.json --outdir ./recovered\n```\n\n## Verify\n\n```bash\npython tools/verify_nuke_save.py --artifact CRYSTALIZER_NUKE_SAVE_v1.json --outdir ./recovered\n```\n\nGenerated: 2026-02-14T09:43:24Z\n",
+      "encoding": "utf-8",
+      "path": "README.md",
+      "sha3_256": "ac09b14682dfcee31acf51649ea4859bce24a3d3e185b10fb50e92f5f30621a3"
+    },
+    {
+      "bytes_len": 932,
+      "content": "{\n  \"bundle_file_count\": 4,\n  \"bundle_files_index\": [\n    {\n      \"bytes_len\": 57,\n      \"path\": \"specs/ERROR_MISSING_SPECS.txt\",\n      \"sha3_256\": \"12c0053617e64c0ff51a9d13650e17f0d8f9836be6073b6ac02418c763d0ffe8\"\n    },\n    {\n      \"bytes_len\": 1006,\n      \"path\": \"tools/unpack_nuke_save.py\",\n      \"sha3_256\": \"63a62524520cbbc9253c4c5c1f46153d1a72f4e438bc3f700003b6f07abcd5c6\"\n    },\n    {\n      \"bytes_len\": 1071,\n      \"path\": \"tools/verify_nuke_save.py\",\n      \"sha3_256\": \"c332a645d4bdf35adeaf280e2bb5f1396d0d2a744aa82ebeae4125e4fb05cdea\"\n    },\n    {\n      \"bytes_len\": 341,\n      \"path\": \"README.md\",\n      \"sha3_256\": \"ac09b14682dfcee31acf51649ea4859bce24a3d3e185b10fb50e92f5f30621a3\"\n    }\n  ],\n  \"canonical_spec_path\": null,\n  \"generated_at_utc\": \"2026-02-14T09:43:24Z\",\n  \"summary_schema\": {\n    \"name\": \"CRYSTALIZER_NUKE_SAVE_SUMMARY\",\n    \"version\": {\n      \"major\": 1,\n      \"minor\": 0,\n      \"patch\": 0\n    }\n  }\n}",
+      "encoding": "utf-8",
+      "path": "NUKE_SAVE_SUMMARY.json",
+      "sha3_256": "dd3a4b87438e0693add402b8a912164e7b011a91ce3ae287e402a541e8c8ae09"
+    }
+  ],
+  "bundle_index": [
+    {
+      "bytes_len": 57,
+      "path": "specs/ERROR_MISSING_SPECS.txt",
+      "sha3_256": "12c0053617e64c0ff51a9d13650e17f0d8f9836be6073b6ac02418c763d0ffe8"
+    },
+    {
+      "bytes_len": 1006,
+      "path": "tools/unpack_nuke_save.py",
+      "sha3_256": "63a62524520cbbc9253c4c5c1f46153d1a72f4e438bc3f700003b6f07abcd5c6"
+    },
+    {
+      "bytes_len": 1071,
+      "path": "tools/verify_nuke_save.py",
+      "sha3_256": "c332a645d4bdf35adeaf280e2bb5f1396d0d2a744aa82ebeae4125e4fb05cdea"
+    },
+    {
+      "bytes_len": 341,
+      "path": "README.md",
+      "sha3_256": "ac09b14682dfcee31acf51649ea4859bce24a3d3e185b10fb50e92f5f30621a3"
+    },
+    {
+      "bytes_len": 932,
+      "path": "NUKE_SAVE_SUMMARY.json",
+      "sha3_256": "dd3a4b87438e0693add402b8a912164e7b011a91ce3ae287e402a541e8c8ae09"
+    }
+  ],
+  "generated_at_utc": "2026-02-14T09:43:24Z",
+  "intent": "All-in-one standalone nuke-save artifact. Extracts into a directory containing engine specs and unpack/verify tools.",
+  "self_hash": {
+    "alg": "sha3_256",
+    "sha3_256": "c5f5c3eb8280d497a58dd60ab1493466cfd2c76060c473914098de17d7c6bcf1"
+  }
+}

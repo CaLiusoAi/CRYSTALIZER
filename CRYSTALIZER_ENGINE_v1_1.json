@@ -1,0 +1,434 @@
+{
+  "CrystalSchema": {
+    "required": [
+      "crystal_id",
+      "domain_id",
+      "root_axiom_refs",
+      "primitives",
+      "channels",
+      "operators",
+      "state_space",
+      "measures",
+      "invariants",
+      "threat_model",
+      "failure_taxonomy",
+      "compliance_gates",
+      "seal_spec",
+      "battery_specs",
+      "harness_spec",
+      "drift_spec",
+      "registry_spec",
+      "federation_spec",
+      "genesis_quarantine_spec",
+      "completeness"
+    ]
+  },
+  "DomainKernelSchema": {
+    "properties": {
+      "acceptance_policy": "AcceptancePolicySpec",
+      "channels": "ChannelSpec[]",
+      "completeness": "CompletenessClaim",
+      "domain_description": "string",
+      "domain_id": "string",
+      "invariants": "InvariantSpec[]",
+      "measures": "MeasureSpec[]",
+      "operators": "{name: OperatorSpec}",
+      "primitives": "{name: PrimitiveSpec}",
+      "probe_plan": "ProbePlanSpec",
+      "root_axiom_refs": "root_axiom_id[]",
+      "state_space": "StateSpaceSpec",
+      "threat_model": {
+        "properties": {
+          "threats": "ThreatSpec[]"
+        },
+        "required": [
+          "threats"
+        ]
+      }
+    },
+    "required": [
+      "domain_id",
+      "domain_description",
+      "root_axiom_refs",
+      "primitives",
+      "channels",
+      "operators",
+      "state_space",
+      "measures",
+      "invariants",
+      "threat_model",
+      "probe_plan",
+      "acceptance_policy",
+      "completeness"
+    ]
+  },
+  "artifact_schema": {
+    "breaking_change_rules": {
+      "major": "renames/removals/meaning changes",
+      "minor": "additive only",
+      "patch": "clarifications/constraints"
+    },
+    "migration_proof_digest": null,
+    "name": "CRYSTALIZER_ENGINE",
+    "schema_semver": "1.1.0",
+    "supersedes": {
+      "compat": "backward-compatible additive",
+      "previous": "1.0.0",
+      "upgrade_notes": [
+        "Adds explicit measure_refs in InvariantSpec",
+        "Adds explicit threat\u2192channel and threat\u2192impact bindings",
+        "Adds optional closure_proof_digest for TYPE-S completeness",
+        "Adds operator key rotation protocol primitives and invariants",
+        "Adds time anchoring and anti-equivocation strengthening"
+      ]
+    },
+    "version": {
+      "major": 1,
+      "minor": 1,
+      "patch": 0
+    }
+  },
+  "coldboot_bundle_requirements": {},
+  "design_principles": [
+    "Schema-level binding beats procedural binding: enforce invariant\u2194measure and threat\u2194channel links structurally.",
+    "Time is an attack surface: treat timestamps, ordering, and backdating as adversarial; require time anchoring where relevant.",
+    "Availability is safety: DoS on audit paths (proof endpoints, gossip, registry) is a security failure mode.",
+    "Supply chain is part of the system: pin tool provenance, harness build inputs, and artifact sources via content-addressed digests.",
+    "Ambiguity is exploit: all high-impact message types must be typed, authorized, and signature-checked."
+  ],
+  "diff_from_v1_0_0": {
+    "added": [
+      "InvariantSpec.measure_refs",
+      "ThreatSpec.attack_surface_channels + impact_surface bindings",
+      "CompletenessClaim.closure_proof_digest for TYPE-S",
+      "Operator key rotation protocol and OperatorKeyRecord",
+      "Time anchoring and availability invariants",
+      "Anti-equivocation strengthening"
+    ],
+    "behavior": "Fail-closed tightened; schemas now encode bindings that were procedural in v1.0.0",
+    "removed": []
+  },
+  "engine_outputs": {
+    "must_emit": [
+      "CompiledCrystalSpecs.json",
+      "BatteryPublic/*",
+      "BatteryHoldout/* or HoldoutDigestPolicy.json",
+      "HarnessSpec.json",
+      "TraceSchema.json",
+      "DigestSpec.json",
+      "DriftSpec.json",
+      "RegistrySpec.json",
+      "FederationSpec.json",
+      "GenesisBlock.json",
+      "OperatorKeyHistory.json",
+      "repo_manifest.txt",
+      "repo_manifest_sha3_256.txt"
+    ],
+    "self_evidence": {
+      "recommended": [
+        "Include a minimal verifier tool that checks hashes and required fields before running anything.",
+        "Include a human-readable SUMMARY.md generated from the JSONs (but JSON remains canonical)."
+      ],
+      "rule": "Every emitted file must be referenced by sha3-256 in a top-level manifest, and the manifest must itself be hashed."
+    }
+  },
+  "generated_at_utc": "2026-02-14T09:39:52Z",
+  "hardening_additions": {
+    "adversarial_equivocation": {
+      "strengthening": [
+        "Split-view resistance: clients must query >=2 operators for STHs.",
+        "If same tree_size with different root_hash and no valid consistency path, flag equivocation and quarantine operator until resolved.",
+        "Require cross-operator STH gossip; missing gossip is a detectable failure mode."
+      ]
+    },
+    "availability_security": {
+      "invariants": [
+        "Proof endpoints (inclusion/consistency) must meet availability SLOs; sustained failure => operator degraded/suspect.",
+        "Gossip participation is mandatory; non-participation beyond threshold => suspect."
+      ]
+    },
+    "supply_chain_integrity": {
+      "requirements": [
+        "All harness builds must be reproducible from content-addressed inputs (docker digest, commit hashes, dependency lock).",
+        "Tool outputs used as evidence must include tool binary digest or version digest where applicable.",
+        "Battery generators must include seed + generator digest; private probe leaks => quarantine + rekey."
+      ]
+    },
+    "time_anchoring": {
+      "policy": [
+        "STH timestamps must be monotonic per operator; non-monotonic => suspect.",
+        "Clients verify STH freshness windows and record seen STHs.",
+        "Optional external time anchor: publish periodic STH digests to an external witness channel (any immutable medium) and store witness digest in ledger."
+      ],
+      "problem": "Backdating/clock skew can let an operator present inconsistent histories without immediate detection."
+    }
+  },
+  "operator_pipeline": [],
+  "purpose": "Domain-agnostic evidence compiler that turns DomainKernel semantics into sealed crystals with cold-boot survivability, fail-closed admissibility, and federated transparency logs.",
+  "registry_federation_genesis": {
+    "federation": {
+      "degraded_mode": "if active operators < quorum => suspend new claims",
+      "gossip": {
+        "max_sth_age_days": 7,
+        "required": true,
+        "rule": "clients compare STHs; same tree_size different root => equivocation signal"
+      },
+      "operator_key_rotation": {
+        "artifacts": [
+          "OperatorKeyRecord",
+          "KeyRotationLeaf",
+          "KeyRevocationLeaf"
+        ],
+        "invariants": [
+          "At any time, the active operator set must have >= quorum_min non-revoked keys.",
+          "Key rotation events must be append-only and gossiped like other leaves.",
+          "Unknown operator keys => ignore signatures from that key (fail closed)."
+        ],
+        "policy": [
+          "Keys have explicit validity windows (not_before, not_after).",
+          "Rotation requires overlap window where both old and new keys are published and cross-signed by quorum.",
+          "Revocations are appended as ledger leaves and must be included in STHs.",
+          "A revoked key cannot sign STHs; any such STH is invalid and triggers quarantine."
+        ]
+      },
+      "operators_min": 5,
+      "proofs": [
+        "inclusion",
+        "consistency"
+      ],
+      "quorum_min": 3
+    },
+    "genesis_quarantine": {
+      "compromise_classes": [
+        "OperatorKeyLeak",
+        "ProbeSetLeak",
+        "HarnessPoisoning",
+        "RegistryEquivocation",
+        "QuorumCapture",
+        "CryptographicBreak"
+      ],
+      "extinction": "cryptographic break or quorum capture => read-only + new genesis fork",
+      "genesis_block": "pins operator keys + crystal spec hashes + trust assumptions",
+      "key_rotation_vs_compromise": {
+        "compromise_rotation": "key leak => revoke immediately + quarantine affected period; may require new genesis if quorum integrity uncertain",
+        "non_compromise_rotation": "normal rotation allowed with overlap + quorum cross-sign"
+      },
+      "quarantine": "monotonic taint; tainted snapshots non-admissible"
+    },
+    "registry": {
+      "anti_truncation": [
+        "Clients store past STHs and demand consistency proofs to newest STH.",
+        "Operators must serve historical STHs and consistency proofs."
+      ],
+      "ledger_format": "NDJSON append-only",
+      "merkle": {
+        "hash": "sha3_256",
+        "leaf_prefix": "leaf:",
+        "node_prefix": "node:"
+      },
+      "row_chain": "previous_line_digest_sha3_256"
+    }
+  },
+  "root_axioms": [
+    {
+      "id": "K_perp_O",
+      "name": "Security \u27c2 Obfuscation",
+      "operationalization": [
+        "Every claim links to sealed probe evidence + drift results when comparing versions.",
+        "Private holdouts are anti-overfit devices; leaks trigger quarantine and rekeying.",
+        "All acceptance gates are observable metrics + invariants; narrative assertions are discarded."
+      ],
+      "statement": "Security claims must not depend on secrecy of algorithms, prompts, or undocumented behavior; obfuscation cannot substitute for verifiable controls."
+    }
+  ],
+  "types": {
+    "ChannelSpec": {
+      "properties": {
+        "authn": [
+          "none",
+          "sig_ed25519",
+          "mtls",
+          "oauth2"
+        ],
+        "channel_id": "string",
+        "data_kinds": "string[]",
+        "direction": [
+          "inbound",
+          "outbound",
+          "bidirectional"
+        ],
+        "trust": "TrustLabel",
+        "typed_messages": "bool"
+      },
+      "required": [
+        "channel_id",
+        "trust",
+        "direction",
+        "data_kinds"
+      ]
+    },
+    "CompletenessClaim": {
+      "properties": {
+        "claim": "string",
+        "claim_type": [
+          "TYPE-S",
+          "TYPE-C"
+        ],
+        "closure_principle": "string",
+        "closure_proof_digest": "Digest|null",
+        "enforcement": "string",
+        "proof_format": [
+          "pdf",
+          "markdown",
+          "formal",
+          "none"
+        ],
+        "proof_location": "string|null"
+      },
+      "required": [
+        "claim",
+        "claim_type",
+        "closure_principle",
+        "enforcement"
+      ],
+      "rules": [
+        "If claim_type==TYPE-S then closure_proof_digest must be non-null."
+      ]
+    },
+    "Digest": {
+      "alg": [
+        "sha3_256",
+        "blake3"
+      ],
+      "hex": "[0-9a-f]+"
+    },
+    "InvariantSpec": {
+      "properties": {
+        "applies_to": [
+          "crystal",
+          "pipeline",
+          "registry",
+          "federation",
+          "genesis"
+        ],
+        "fail_closed_action": [
+          "reject",
+          "quarantine_sender",
+          "quarantine_snapshot",
+          "enter_degraded_mode",
+          "extinction"
+        ],
+        "invariant_id": "string",
+        "measure_refs": "measure_id[]",
+        "predicate": "string  # a small DSL over measures (e.g., 'lateral_leak_rate == 0')",
+        "severity": [
+          "critical",
+          "high",
+          "medium",
+          "low"
+        ],
+        "statement": "string"
+      },
+      "required": [
+        "invariant_id",
+        "statement",
+        "severity",
+        "predicate",
+        "measure_refs"
+      ]
+    },
+    "MeasureSpec": {
+      "properties": {
+        "data_type": [
+          "float",
+          "int",
+          "bool",
+          "categorical",
+          "distribution"
+        ],
+        "definition": "string",
+        "expected_direction": [
+          "higher_is_better",
+          "lower_is_better",
+          "target_is_zero",
+          "no_preference"
+        ],
+        "measure_id": "string",
+        "name": "string",
+        "protected": "bool",
+        "scope": [
+          "per_trace",
+          "per_episode",
+          "aggregate"
+        ],
+        "unit": "string|null"
+      },
+      "required": [
+        "measure_id",
+        "name",
+        "definition",
+        "data_type",
+        "scope"
+      ]
+    },
+    "OperatorKeyRecord": {
+      "properties": {
+        "created_utc": "ISO8601",
+        "key_id": "string",
+        "not_after_utc": "ISO8601",
+        "not_before_utc": "ISO8601",
+        "operator_id": "string",
+        "pubkey_ed25519_hex": "hex",
+        "revocation_evidence_digests": "Digest[]",
+        "revocation_reason": "string|null",
+        "status": [
+          "active",
+          "retired",
+          "revoked"
+        ],
+        "successor_key_id": "string|null"
+      },
+      "required": [
+        "operator_id",
+        "key_id",
+        "pubkey_ed25519_hex",
+        "created_utc",
+        "not_before_utc",
+        "not_after_utc",
+        "status"
+      ]
+    },
+    "SemVer": {
+      "major": "int",
+      "minor": "int",
+      "patch": "int"
+    },
+    "ThreatSpec": {
+      "properties": {
+        "adversary_capabilities": "string[]",
+        "attack_surface_channels": "channel_id[]",
+        "description": "string",
+        "impact_surface": {
+          "invariants": "invariant_id[]",
+          "measures": "measure_id[]"
+        },
+        "name": "string",
+        "preconditions": "string[]",
+        "threat_id": "string",
+        "typical_payload_transforms": "string[]"
+      },
+      "required": [
+        "threat_id",
+        "name",
+        "description",
+        "attack_surface_channels",
+        "impact_surface"
+      ]
+    },
+    "TrustLabel": [
+      "untrusted",
+      "internal",
+      "privileged"
+    ]
+  }
+}
